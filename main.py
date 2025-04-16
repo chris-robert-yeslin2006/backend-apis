@@ -106,55 +106,61 @@ def get_organizations():
         raise HTTPException(status_code=404, detail="No organizations found")
     return org_resp.data
 
-# @app.post("/auth/login")
-# def login(login_request: LoginRequest):
-#     email = login_request.email
-#     password = login_request.password
+@app.post("/auth/login")
+async def login_user(payload: LoginRequest, request: Request):
+    print(f"\nLogin attempt for username: {payload.username}")
+    
+    try:
+        # Fetch user by username
+        response = supabase.table("auth").select("*").eq("username", payload.username).execute()
+        
+        if not response.data:
+            print("⚠️ No user found with this username.")
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        user = response.data[0]
+        print(f"🔎 User found: {user['username']} (Role: {user['role']})")
+        
+        # Password check (plaintext comparison for debugging)
+        if payload.password != user["password"]:
+            print("❌ Password mismatch.")
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        print("✅ Authentication successful")
+        
+        # Get organization ID based on role
+        org_id = None
+        if user["role"] in ["admin", "student"]:
+            table = "admins" if user["role"] == "admin" else "students"
+            org_res = supabase.table(table).select("org_id").eq("username", user["username"]).execute()
+            if org_res.data:
+                org_id = org_res.data[0].get("org_id")
+                print(f"🏢 Organization ID: {org_id}")
 
-#     result = supabase.table("auth").select("*").eq("email", email).eq("password", password).execute()
-
-#     if not result.data:
-#         raise HTTPException(status_code=401, detail="Invalid credentials")
-
-#     user = result.data[0]
-#     role = user["role"]
-#     username = user["username"]
-
-#     token = create_access_token({
-#         "email": user["email"],
-#         "role": role,
-#         "username": username,
-#     })
-
-#     response = {
-#         "access_token": token,
-#         "role": role,
-#         "username": username,
-#     }
-
-#     # Handle all role cases consistently
-#     if role == "student":
-#         org_res = supabase.table("students").select("org_id").eq("name", username).execute()
-#         if not org_res.data:
-#             raise HTTPException(status_code=404, detail="Organization not found for student")
-#         response["org_id"] = org_res.data[0]["org_id"]
-#         response["redirect"] = "/student"  # Changed from "/organization"
-
-#     elif role == "admin":
-#         org_res = supabase.table("admins").select("org_id").eq("name", username).execute()
-#         if not org_res.data:
-#             raise HTTPException(status_code=404, detail="Organization not found for admin")
-#         response["org_id"] = org_res.data[0]["org_id"]
-#         response["redirect"] = "/admin"  # Changed from "/organization"
-
-#     elif role == "org":  # Added case for org role
-#         org_res = supabase.table("organizations").select("org_id").eq("name", username).execute()
-#         if not org_res.data:
-#             raise HTTPException(status_code=404, detail="Organization not found")
-#         response["org_id"] = org_res.data[0]["org_id"]
-#         response["redirect"] = "/organization"
-
-#     elif role == "individual":
-#         response["redirect"] = "/individual"
-
-#     return response
+        # Generate JWT token
+        token_data = {
+            "sub": user["username"],
+            "role": user["role"],
+            "exp": datetime.utcnow() + timedelta(hours=24)
+        }
+        token = jwt.encode(token_data, JWT_SECRET, algorithm="HS256")
+        
+        # Determine redirect path
+        redirect_map = {
+            "admin": "/admin/dashboard",
+            "student": "/student/dashboard",
+            "org": "/organization/dashboard",
+            "individual": "/individual/dashboard"
+        }
+        
+        return {
+            "access_token": token,
+            "role": user["role"],
+            "username": user["username"],
+            "org_id": org_id,
+            "redirect": redirect_map.get(user["role"], "/")
+        }
+        
+    except Exception as e:
+        print(f"🔥 Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
