@@ -105,3 +105,56 @@ def get_organizations():
     if not org_resp.data:
         raise HTTPException(status_code=404, detail="No organizations found")
     return org_resp.data
+
+# @app.post("/auth/login")
+# def login(login_request: LoginRequest):
+#     email = login_request.email
+#     password = login_request.password
+
+#     result = supabase.table("auth").select("*").eq("email", email).eq("password", password).execute()
+
+#     if not result.data:
+#         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+#     user = result.data[0]
+#     role = user["role"]
+#     username = user["username"]
+
+#     token = create_access_token({
+#         "email": user["email"],
+#         "role": role,
+#         "username": username,
+#     })
+
+#     response = {
+#         "access_token": token,
+#         "role": role,
+#         "username": username,
+#     }
+
+#     # Handle all role cases consistently
+#     if role == "student":
+#         org_res = supabase.table("students").select("org_id").eq("name", username).execute()
+#         if not org_res.data:
+#             raise HTTPException(status_code=404, detail="Organization not found for student")
+#         response["org_id"] = org_res.data[0]["org_id"]
+#         response["redirect"] = "/student"  # Changed from "/organization"
+
+#     elif role == "admin":
+#         org_res = supabase.table("admins").select("org_id").eq("name", username).execute()
+#         if not org_res.data:
+#             raise HTTPException(status_code=404, detail="Organization not found for admin")
+#         response["org_id"] = org_res.data[0]["org_id"]
+#         response["redirect"] = "/admin"  # Changed from "/organization"
+
+#     elif role == "org":  # Added case for org role
+#         org_res = supabase.table("organizations").select("org_id").eq("name", username).execute()
+#         if not org_res.data:
+#             raise HTTPException(status_code=404, detail="Organization not found")
+#         response["org_id"] = org_res.data[0]["org_id"]
+#         response["redirect"] = "/organization"
+
+#     elif role == "individual":
+#         response["redirect"] = "/individual"
+
+#     return response
