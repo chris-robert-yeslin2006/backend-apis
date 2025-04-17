@@ -1,11 +1,14 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel,EmailStr
+from sqlalchemy.orm import Session
 from supabase import create_client, Client
 import bcrypt
 import jwt
 import os
 from datetime import datetime, timedelta
+import uuid
+from typing import Optional
 
 # Supabase config
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://zabdbbemkenayxfmevhj.supabase.co")
@@ -27,6 +30,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/organization/list")
+def list_organizations():
+    response = supabase.table("organizations").select("*").execute()
+    return {"organizations": response.data}
 # Request model
 class LoginRequest(BaseModel):
     email: str
@@ -98,16 +105,41 @@ async def login_user(payload: LoginRequest, request: Request):
         print("🔥 Exception during login:", str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@app.get("/auth/organizations")
-def get_organizations():
-    # Fetch organization names from the organizations table
-    org_resp = supabase.table("organizations").select("id", "name").execute()
-    if not org_resp.data:
-        raise HTTPException(status_code=404, detail="No organizations found")
-    return org_resp.data
+class AdminCreate(BaseModel):
+    name: str
+    org_id: uuid.UUID
+    role: str
+    contact: str
+    language: str
+    email: EmailStr
+    password: str
 
-@app.post("/auth/login")
-async def login_user(payload: LoginRequest, request: Request):
+@app.post("admin/add")
+async def add_admin(admin: AdminCreate):
+    # Check if email already exists in auth table
+    auth_check = supabase.table("auth").select("*").eq("email", admin.email).execute()
+    if auth_check.data:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Add to admins table
+    admin_response = supabase.table("admins").insert({
+        "name": admin.name,
+        "org_id": str(admin.org_id),
+        "role": admin.role,
+        "contact": admin.contact,
+        "language": admin.language,
+        "email": admin.email
+    }).execute()
+    
+    # Add to auth table
+    auth_response = supabase.table("auth").insert({
+        "username": admin.name,
+        "email": admin.email,
+        "password": admin.password,  # Not hashed for now
+        "role": "admin"
+    }).execute()
+    
+    return {"success": True, "admin_id": admin_response.data[0]["id"]}
     print(f"\nLogin attempt for username: {payload.username}")
     
     try:
