@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 import uuid
 from typing import Optional
 
+# Import the analytics router
+from analytics_endpoints import router as analytics_router
+
 # Supabase config
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://zabdbbemkenayxfmevhj.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphYmRiYmVta2VuYXl4Zm1ldmhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNTExMTIsImV4cCI6MjA1OTYyNzExMn0.yaXLtBRuGbIzRsyDLgoED5xXIfRK657uZ86D7al1sYw")
@@ -28,6 +31,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include the analytics router
+app.include_router(analytics_router)
 
 @app.get("/organization/list")
 def list_organizations():
@@ -67,7 +73,7 @@ async def login_user(payload: LoginRequest, request: Request):
         
         print("✅ Password matched.")
         
-        # Get organization ID for admin or student roles
+        # Get organization ID based on user role
         org_id = None
         if user["role"] == "admin":
             # Get admin's organization ID
@@ -79,6 +85,14 @@ async def login_user(payload: LoginRequest, request: Request):
             student_resp = supabase.table("students").select("org_id").eq("email", user["email"]).execute()
             if student_resp.data and len(student_resp.data) > 0:
                 org_id = student_resp.data[0].get("org_id")
+        elif user["role"] == "org":
+            # Get organization's ID directly from organizations table
+            org_resp = supabase.table("organizations").select("id").eq("email", user["email"]).execute()
+            if org_resp.data and len(org_resp.data) > 0:
+                org_id = org_resp.data[0].get("id")
+                print(f"Found org_id for organization: {org_id}")
+            else:
+                print("⚠️ Could not find organization ID for this org user")
         
         # Generate JWT
         token_data = {
@@ -289,8 +303,6 @@ async def delete_admin(admin_id: str):
         raise HTTPException(status_code=500, detail="Failed to delete admin")
 
     # Add these routes to your main.py file
-
-
 
 class StudentCreate(BaseModel):
     name: str
