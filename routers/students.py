@@ -85,7 +85,39 @@ async def add_student(student: StudentCreate):
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.get("/list")
-async def list_students(org_id: str = None):
+@router.get("/list")
+async def list_students(org_id: str = None, language: str = None):
+    try:
+        print(f"Received request for students with org_id: {org_id} and language: {language}")
+        
+        # Get organization name separately
+        org_name = None
+        if org_id:
+            org_response = supabase.table("organizations").select("name").eq("id", org_id).execute()
+            print(f"Organization response: {org_response.data}")
+            
+            if org_response.data and len(org_response.data) > 0:
+                org_name = org_response.data[0].get("name")
+        
+        # Get students with organization relationship
+        query = supabase.table("students").select("*, organizations(name)")
+        
+        if org_id:
+            query = query.eq("org_id", org_id)
+        
+        if language:
+            query = query.eq("language", language)
+            
+        response = query.execute()
+        print(f"Students response: {response.data}")
+        
+        return {
+            "students": response.data or [],
+            "org_name": org_name
+        }
+    except Exception as e:
+        print(f"Error fetching students: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch students")
     try:
         print(f"Received request for students with org_id: {org_id}")
         
