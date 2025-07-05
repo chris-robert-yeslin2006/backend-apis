@@ -64,10 +64,20 @@ async def login_user(payload: LoginRequest, request: Request):
                 print("⚠️ Could not find organization ID for this org user")
         
         # Generate JWT
+        language = user.get("language")
+        if not language and user["role"] == "admin":
+            admin_lang_resp = supabase.table("admins").select("language").eq("email", user["email"]).execute()
+            if admin_lang_resp.data and len(admin_lang_resp.data) > 0:
+                language = admin_lang_resp.data[0].get("language")
+        elif not language and user["role"] == "student":
+            student_lang_resp = supabase.table("students").select("language").eq("email", user["email"]).execute()
+            if student_lang_resp.data and len(student_lang_resp.data) > 0:
+                language = student_lang_resp.data[0].get("language")
         token_data = {
             "user_id": user["id"],
             "email": user["email"],
             "role": user["role"],
+            "language": language,
             "exp": datetime.utcnow() + timedelta(hours=24)
         }
         token = jwt.encode(token_data, JWT_SECRET, algorithm="HS256")
@@ -81,6 +91,8 @@ async def login_user(payload: LoginRequest, request: Request):
             "role": user["role"],
             "username": user["username"],
             "org_id": org_id,
+            "language": language,
+            "user_id": user["id"],
             "redirect": redirect_path
         }
     
