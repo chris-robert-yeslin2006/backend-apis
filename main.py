@@ -34,6 +34,7 @@ from routers.admins import router as admins_router
 from routers.students import router as students_router
 from analytics_endpoints import router as analytics_router
 from routers.tests import router as tests_router
+from routers.student_tests import router as student_tests
 
 # Include routers
 app.include_router(auth_router)
@@ -42,6 +43,7 @@ app.include_router(admins_router)
 app.include_router(students_router)
 app.include_router(analytics_router)
 app.include_router(tests_router)
+app.include_router(student_tests)
 
 @app.get("/")
 async def root():
