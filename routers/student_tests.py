@@ -16,11 +16,8 @@ class StudentTest(BaseModel):
     status: str
 
 @router.get("/upcoming", response_model=List[StudentTest])
-async def get_student_tests(request: Request):
+async def get_student_tests(user_id: str, language: str):
     try:
-        # Get data from cookies
-        user_id = request.cookies.get("user_id")
-        language = request.cookies.get("language")
         if not user_id or not language:
             raise HTTPException(status_code=401, detail="Missing authentication info")
 

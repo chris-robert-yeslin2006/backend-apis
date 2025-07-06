@@ -5,8 +5,8 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime,timedelta
 import asyncio
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.date import DateTrigger
+from apscheduler.schedulers.asyncio import AsyncIOScheduler # type: ignore
+from apscheduler.triggers.date import DateTrigger # type: ignore
 from main import supabase
 
 router = APIRouter(prefix="/tests", tags=["tests"])
