@@ -85,22 +85,34 @@ async def get_analytics_summary(
             # Return default values if no data
             return {
                 "summary": {
-                    "avg_overall": 0,
-                    "avg_fluency": 0,
-                    "avg_vocab": 0,
-                    "avg_sentence_mastery": 0,
-                    "avg_pronunciation": 0,
-                    "weekly_improvement": 0
+                    "avg_overall": 0.0,
+                    "avg_fluency": 0.0,
+                    "avg_vocab": 0.0,
+                    "avg_sentence_mastery": 0.0,
+                    "avg_pronunciation": 0.0,
+                    "weekly_improvement": 0.0
                 }
             }
         
-        # Calculate averages
+        # Calculate averages - handle None values
         students = response.data
-        avg_overall = sum(s.get("overall_mark", 0) for s in students) / len(students)
-        avg_fluency = sum(s.get("fluency_mark", 0) for s in students) / len(students)
-        avg_vocab = sum(s.get("vocab_mark", 0) for s in students) / len(students)
-        avg_sentence_mastery = sum(s.get("sentence_mastery", 0) for s in students) / len(students)
-        avg_pronunciation = sum(s.get("pronunciation", 0) for s in students) / len(students)
+        
+        def safe_float(value):
+            """Convert value to float, return 0.0 if None or invalid"""
+            if value is None:
+                return 0.0
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return 0.0
+        
+        # Calculate averages with None handling
+        valid_students = len(students)
+        avg_overall = sum(safe_float(s.get("overall_mark")) for s in students) / valid_students if valid_students > 0 else 0.0
+        avg_fluency = sum(safe_float(s.get("fluency_mark")) for s in students) / valid_students if valid_students > 0 else 0.0
+        avg_vocab = sum(safe_float(s.get("vocab_mark")) for s in students) / valid_students if valid_students > 0 else 0.0
+        avg_sentence_mastery = sum(safe_float(s.get("sentence_mastery")) for s in students) / valid_students if valid_students > 0 else 0.0
+        avg_pronunciation = sum(safe_float(s.get("pronunciation")) for s in students) / valid_students if valid_students > 0 else 0.0
         
         # For weekly improvement, we would need historical data
         # Using a placeholder value for now
@@ -139,15 +151,34 @@ async def get_language_detail(
             .eq("language", language) \
             .execute()
         
-        total_students = students_response.count if hasattr(students_response, 'count') else len(students_response.data)
+        total_students = students_response.count if hasattr(students_response, 'count') else len(students_response.data or [])
+        
+        if total_students == 0:
+            return {
+                "language_name": language,
+                "total_students": 0,
+                "active_students": 0,
+                "tests_conducted": 0,
+                "pass_rate": 0
+            }
         
         # For other metrics, we would need additional tables/data
         # Using placeholder values for now
         active_students = int(total_students * 0.85)  # Assuming 85% are active
-        tests_conducted = total_students * 4 // 10  # Rough estimate
+        tests_conducted = max(1, total_students * 4 // 10)  # Rough estimate, minimum 1
         
-        # Calculate pass rate (students with overall_mark >= 70)
-        passing_students = sum(1 for s in students_response.data if s.get("overall_mark", 0) >= 70)
+        def safe_float(value):
+            """Convert value to float, return 0.0 if None or invalid"""
+            if value is None:
+                return 0.0
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return 0.0
+        
+        # Calculate pass rate (students with overall_mark >= 70) - handle None values
+        students_data = students_response.data or []
+        passing_students = sum(1 for s in students_data if safe_float(s.get("overall_mark")) >= 70)
         pass_rate = int((passing_students / total_students) * 100) if total_students > 0 else 0
         
         return {

@@ -38,6 +38,7 @@ async def add_student(student: StudentCreate):
             "email": student.email,
             "language": student.language
         }
+        print(f"adding Student data: {student_data}")
         
         # Add optional mark fields if provided
         if student.overall_mark is not None:
@@ -84,7 +85,7 @@ async def add_student(student: StudentCreate):
         print(f"Error adding student: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@router.get("/list")
+
 @router.get("/list")
 async def list_students(org_id: str = None, language: str = None):
     try:
@@ -118,34 +119,34 @@ async def list_students(org_id: str = None, language: str = None):
     except Exception as e:
         print(f"Error fetching students: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to fetch students")
-    try:
-        print(f"Received request for students with org_id: {org_id}")
+    # try:
+    #     print(f"Received request for students with org_id: {org_id}")
         
-        # Get organization name separately
-        org_name = None
-        if org_id:
-            org_response = supabase.table("organizations").select("name").eq("id", org_id).execute()
-            print(f"Organization response: {org_response.data}")
+    #     # Get organization name separately
+    #     org_name = None
+    #     if org_id:
+    #         org_response = supabase.table("organizations").select("name").eq("id", org_id).execute()
+    #         print(f"Organization response: {org_response.data}")
             
-            if org_response.data and len(org_response.data) > 0:
-                org_name = org_response.data[0].get("name")
+    #         if org_response.data and len(org_response.data) > 0:
+    #             org_name = org_response.data[0].get("name")
         
-        # Get students with organization relationship
-        query = supabase.table("students").select("*, organizations(name)")
+    #     # Get students with organization relationship
+    #     query = supabase.table("students").select("*, organizations(name)")
         
-        if org_id:
-            query = query.eq("org_id", org_id)
+    #     if org_id:
+    #         query = query.eq("org_id", org_id)
             
-        response = query.execute()
-        print(f"Students response: {response.data}")
+    #     response = query.execute()
+    #     print(f"Students response: {response.data}")
         
-        return {
-            "students": response.data or [],
-            "org_name": org_name
-        }
-    except Exception as e:
-        print(f"Error fetching students: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to fetch students")
+    #     return {
+    #         "students": response.data or [],
+    #         "org_name": org_name
+    #     }
+    # except Exception as e:
+    #     print(f"Error fetching students: {str(e)}")
+    #     raise HTTPException(status_code=500, detail="Failed to fetch students")
 
 @router.get("/{student_id}")
 async def get_student(student_id: str):
